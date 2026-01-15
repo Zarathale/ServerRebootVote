@@ -1,0 +1,104 @@
+# src/main/resources/config.yml
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# RebootVote — ScaenaCraft “polite reboot”
+#
+# PALETTE NOTE:
+# These are temporary defaults — replace with ScaenaCraft palette hex values.
+# Replace these with ScaenaCraft palette hex values.
+#
+# Palette tokens in templates:
+#   <c.primary> <c.accent> <c.gold> <c.gray> <c.white> <c.warn> <c.ok>
+#
+# IMPORTANT:
+# - Do NOT use closing palette tags like </c.primary>. They are tolerated (mapped to <reset>)
+#   but best practice is: set the next color explicitly instead.
+# - Placeholders are tags: <player> <holders> <seconds> <online> <online_start>
+#   plus reboot timing: <last_reboot_seconds> <avg_reboot_seconds>
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+palette:
+  primary: "#EA7125"   # temporary defaults — replace with ScaenaCraft palette
+  accent: "#FECB00"    # temporary defaults — replace with ScaenaCraft palette
+  gold: "#FECB00"      # temporary defaults — replace with ScaenaCraft palette
+  gray: "#B0B0B0"      # temporary defaults — replace with ScaenaCraft palette
+  white: "#FFFFFF"     # temporary defaults — replace with ScaenaCraft palette
+  warn: "#FF5555"      # temporary defaults — replace with ScaenaCraft palette
+  ok: "#55FF55"        # temporary defaults — replace with ScaenaCraft palette
+
+# Default countdown duration for `/rebootvote start` when no seconds argument is provided.
+default-reboot-time: 45
+
+# Broadcast cadence for countdown callouts (stage-manager style).
+status-update-interval: 15
+
+# While paused due to WAIT holders, broadcast a reminder this often.
+hold-reminder-interval: 60
+
+reboot:
+  mode: "SHUTDOWN"   # "SHUTDOWN" or "COMMAND"
+  command: "restart" # used only when mode = "COMMAND"
+
+vote_keywords:
+  ok: ["ok"]
+  wait: ["wait"]
+
+anti_spam:
+  hold_broadcast_cooldown_seconds: 3
+
+messages:
+  start_templates:
+    - |-
+      <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
+      <c.gold><bold>✦ ✦ ✦</bold> <c.white><bold>ScaenaCraft reboot in <c.accent><bold>1 minute</bold></c.accent></bold> <c.gold><bold>✦ ✦ ✦</bold>
+      <c.gray>Type <c.ok><bold>ok</bold></c.ok> if ready now · Type <c.warn><bold>wait</bold></c.warn> to hold
+      <c.gray><italic>Online at start:</italic> <c.white><bold><online_start></bold></c.white>
+      <c.gray><italic>Last reboot took</italic> <c.white><last_reboot_seconds></c.white><c.gray><italic> seconds</italic></c.gray>
+    - |-
+      <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
+      <c.primary><bold>◆ House to half! ◆</bold> <c.white>Reboot in <c.accent><bold>60s</bold></c.accent>
+      <c.gray>Chat <c.ok><bold>ok</bold></c.ok> to approve · <c.warn><bold>wait</bold></c.warn> to hold the curtain
+      <c.gray><italic>/SKAY-nuh-craft/</italic>
+      <c.gray><italic>Last reboot took</italic> <c.white><last_reboot_seconds></c.white><c.gray><italic> seconds</italic></c.gray>
+
+  hold_templates:
+    - |-
+      <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
+      <c.warn><bold>WAIT HOLD</bold></c.warn> <c.gray>— <c.white><bold><player></bold></c.white> is holding the reboot.
+      <c.gray>Holders:</c.gray> <c.white><bold><holders></bold></c.white>
+      <c.gray>Type <c.ok><bold>ok</bold></c.ok> when ready to resume.
+
+  all_ok_templates:
+    - |-
+      <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
+      <c.ok><bold>ALL CLEAR</bold></c.ok> <c.gray>— everyone online voted <c.ok><bold>ok</bold></c.ok>.
+      <c.gray>Rebooting shortly…</c.gray>
+      <c.gray><italic>Last reboot took</italic> <c.white><last_reboot_seconds></c.white><c.gray><italic> seconds</italic></c.gray>
+
+  final_templates:
+    - |-
+      <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
+      <c.warn><bold>FINAL COUNTDOWN</bold></c.warn> <c.gray>— reboot in <c.white><bold><seconds></bold></c.white>s
+      <c.gray>Finish your action, then please disconnect safely.</c.gray>
+      <c.gray><italic>Last reboot took</italic> <c.white><last_reboot_seconds></c.white><c.gray><italic> seconds</italic></c.gray>
+
+  canceled_templates:
+    - |-
+      <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
+      <c.warn><bold>REBOOT CANCELED</bold></c.warn> <c.gray>— the session has been stopped.</c.gray>
+
+  status_templates:
+    - |-
+      <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
+      <c.white><bold>RebootVote status</bold></c.white> <c.gray>— <c.white><bold><seconds></bold></c.white>s remaining</c.gray>
+      <c.gray>Online now:</c.gray> <c.white><bold><online></bold></c.white> <c.gray>· at start:</c.gray> <c.white><bold><online_start></bold></c.white>
+      <c.gray>Holding:</c.gray> <c.white><bold><holders></bold></c.white>
+
+  # Random “stage manager” callouts during the countdown (when not paused).
+  # If missing/empty, the plugin will fall back to using messages.status_templates.
+  callout_templates:
+    - |-
+      <c.gray>◆ <c.white><bold><seconds></bold></c.white>s · <c.gray>Places, everyone.</c.gray>
+    - |-
+      <c.gray>◆ <c.white><bold><seconds></bold></c.white>s · <c.gray>Stand by.</c.gray>
+    - |-
+      <c.gray>◆ <c.white><bold><seconds></bold></c.white>s · <c.gray>Check your inventory and wrap up your scene.</c.gray>
