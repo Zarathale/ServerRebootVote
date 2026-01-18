@@ -11,6 +11,19 @@
 .gradle/
 build/
 
+# IntelliJ / IDE metadata (if applicable)
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
