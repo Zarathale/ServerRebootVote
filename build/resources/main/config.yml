@@ -13,6 +13,7 @@
 # - Do NOT use closing palette tags like </c.primary>. They are tolerated (mapped to <reset>)
 #   but best practice is: set the next color explicitly instead.
 # - Placeholders are tags: <player> <holders> <seconds> <online> <online_start>
+#   plus reboot timing: <last_reboot_seconds> <avg_reboot_seconds>
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 palette:
@@ -51,11 +52,13 @@ messages:
       <c.gold><bold>✦ ✦ ✦</bold> <c.white><bold>ScaenaCraft reboot in <c.accent><bold>1 minute</bold></c.accent></bold> <c.gold><bold>✦ ✦ ✦</bold>
       <c.gray>Type <c.ok><bold>ok</bold></c.ok> if ready now · Type <c.warn><bold>wait</bold></c.warn> to hold
       <c.gray><italic>Online at start:</italic> <c.white><bold><online_start></bold></c.white>
+      <c.gray><italic>Last reboot took</italic> <c.white><last_reboot_seconds></c.white><c.gray><italic> seconds</italic></c.gray>
     - |-
       <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
       <c.primary><bold>◆ House to half! ◆</bold> <c.white>Reboot in <c.accent><bold>60s</bold></c.accent>
       <c.gray>Chat <c.ok><bold>ok</bold></c.ok> to approve · <c.warn><bold>wait</bold></c.warn> to hold the curtain
       <c.gray><italic>/SKAY-nuh-craft/</italic>
+      <c.gray><italic>Last reboot took</italic> <c.white><last_reboot_seconds></c.white><c.gray><italic> seconds</italic></c.gray>
 
   hold_templates:
     - |-
@@ -69,12 +72,14 @@ messages:
       <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
       <c.ok><bold>ALL CLEAR</bold></c.ok> <c.gray>— everyone online voted <c.ok><bold>ok</bold></c.ok>.
       <c.gray>Rebooting shortly…</c.gray>
+      <c.gray><italic>Last reboot took</italic> <c.white><last_reboot_seconds></c.white><c.gray><italic> seconds</italic></c.gray>
 
   final_templates:
     - |-
       <c.gray><strikethrough>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</strikethrough>
       <c.warn><bold>FINAL COUNTDOWN</bold></c.warn> <c.gray>— reboot in <c.white><bold><seconds></bold></c.white>s
       <c.gray>Finish your action, then please disconnect safely.</c.gray>
+      <c.gray><italic>Last reboot took</italic> <c.white><last_reboot_seconds></c.white><c.gray><italic> seconds</italic></c.gray>
 
   canceled_templates:
     - |-
