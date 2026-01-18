@@ -1,3 +1,4 @@
+```java
 // src/main/java/cc/scaenacraft/rebootvote/RebootSession.java
 package cc.scaenacraft.rebootvote;
 
@@ -45,6 +46,12 @@ public final class RebootSession {
 
     /** Prevents multiple delayed reboot tasks from being queued. */
     private boolean rebootScheduled = false;
+
+    /**
+     * One-way latch that indicates we've committed to rebooting.
+     * The plugin will start the stopwatch in onDisable() when it sees this commit.
+     */
+    private boolean rebootCommittedNotified = false;
 
     public RebootSession(
             JavaPlugin plugin,
@@ -132,8 +139,8 @@ public final class RebootSession {
 
             remainingSeconds--;
             if (remainingSeconds <= 0) {
+                commitRebootIfNeeded();
                 rebootNow();
-                return;
             }
         }, 20L, 20L);
     }
@@ -160,6 +167,7 @@ public final class RebootSession {
             active = true;
         }
 
+        commitRebootIfNeeded();
         broadcastFinal(0);
         rebootNow();
     }
@@ -305,6 +313,8 @@ public final class RebootSession {
                 .allMatch(pl -> votes.getOrDefault(pl.getUniqueId(), Vote.NONE) == Vote.OK);
 
         if (allOk) {
+            commitRebootIfNeeded();
+
             // Freeze session state immediately so the countdown can't keep running
             // and we don't spam ALL CLEAR due to joins/quits/votes.
             active = false;
@@ -312,6 +322,20 @@ public final class RebootSession {
 
             broadcastAllOk();
             scheduleReboot();
+        }
+    }
+
+    /**
+     * Marks that the reboot is committed (countdown hit 0 OR everyone voted OK).
+     * The plugin will start the stopwatch in onDisable() when it sees this commit,
+     * so the measured duration aligns with real downtime (shutdown start -> enable).
+     */
+    private void commitRebootIfNeeded() {
+        if (rebootCommittedNotified) return;
+        rebootCommittedNotified = true;
+
+        if (plugin instanceof RebootVotePlugin p) {
+            p.noteRebootCommitted();
         }
     }
 
@@ -417,7 +441,6 @@ public final class RebootSession {
         active = false;
         cancelTasks();
 
-        // Preserve existing behavior (mode + command handled by MessageService/Plugin config elsewhere).
         if (plugin instanceof RebootVotePlugin p) {
             p.executeRebootAction();
             return;
@@ -447,3 +470,4 @@ public final class RebootSession {
         }
     }
 }
+```

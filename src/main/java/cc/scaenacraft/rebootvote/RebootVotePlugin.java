@@ -17,16 +17,25 @@ public final class RebootVotePlugin extends JavaPlugin {
     private VoteKeywords voteKeywords;
 
     private RebootStatsStore rebootStats;
-
     private RebootSession session;
+
+    /**
+     * Set to true when a reboot is committed (countdown reached 0 or all players voted OK).
+     * The reboot-duration stopwatch is started in onDisable(), aligning timing to
+     * actual downtime (shutdown start -> plugin enable).
+     */
+    private volatile boolean rebootCommittedThisCycle = false;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
+        // New boot cycle
+        rebootCommittedThisCycle = false;
+
         reloadAllConfigState();
 
-        // Load persisted reboot timing stats (and finalize the last pending measurement, if any).
+        // Load persisted reboot timing stats (and finalize any pending measurement).
         rebootStats = new RebootStatsStore(this);
         rebootStats.loadAndFinalizePendingIfPresent();
 
@@ -44,16 +53,32 @@ public final class RebootVotePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // If this shutdown is due to a committed RebootVote reboot,
+        // start the reboot-duration stopwatch now.
+        if (rebootCommittedThisCycle) {
+            try {
+                if (rebootStats == null) rebootStats = new RebootStatsStore(this);
+                rebootStats.markRebootInitiatedAt(System.currentTimeMillis());
+            } catch (Exception ignored) {
+                // Never block shutdown
+            }
+        }
+
         // Silent cleanup: no broadcasts during shutdown.
         if (session != null && session.isActive()) {
             try {
                 session.endSilently();
             } catch (Exception ignored) {
-                // If anything goes weird during shutdown, don’t block disable.
+                // Never block shutdown
             }
         }
+
         getLogger().info("RebootVote disabled.");
     }
+
+    /* -------------------------------------------------------------------------
+     * Permissions & access
+     * ---------------------------------------------------------------------- */
 
     public boolean isSenderAllowed(CommandSender sender) {
         if (!(sender instanceof Player)) return true; // console always allowed
@@ -64,20 +89,40 @@ public final class RebootVotePlugin extends JavaPlugin {
         return voteKeywords;
     }
 
+    /* -------------------------------------------------------------------------
+     * Session lifecycle
+     * ---------------------------------------------------------------------- */
+
+    /**
+     * Called by RebootSession at the moment the reboot is committed
+     * (countdown reached 0 OR all players voted OK).
+     */
+    public void noteRebootCommitted() {
+        rebootCommittedThisCycle = true;
+    }
+
     public void commandStart(CommandSender sender, int seconds) {
         if (session != null && session.isActive()) {
             sender.sendMessage("RebootVote: a session is already running. Use /rebootvote status or /rebootvote cancel.");
             return;
         }
 
-        // Ensure latest config before session start.
         reloadAllConfigState();
+        rebootCommittedThisCycle = false;
 
         long cooldown = getConfig().getLong("anti_spam.hold_broadcast_cooldown_seconds", 3L);
         int statusUpdateInterval = getConfig().getInt("status-update-interval", 15);
         int holdReminderInterval = getConfig().getInt("hold-reminder-interval", 60);
 
-        session = new RebootSession(this, messages, pools, seconds, cooldown, statusUpdateInterval, holdReminderInterval);
+        session = new RebootSession(
+                this,
+                messages,
+                pools,
+                seconds,
+                cooldown,
+                statusUpdateInterval,
+                holdReminderInterval
+        );
         session.start();
 
         sender.sendMessage("RebootVote: started (" + seconds + "s).");
@@ -101,8 +146,8 @@ public final class RebootVotePlugin extends JavaPlugin {
     }
 
     public void commandForce(CommandSender sender) {
-        // Force works regardless of session state.
         reloadAllConfigState();
+        rebootCommittedThisCycle = true;
 
         long cooldown = getConfig().getLong("anti_spam.hold_broadcast_cooldown_seconds", 3L);
         int statusUpdateInterval = getConfig().getInt("status-update-interval", 15);
@@ -114,19 +159,41 @@ public final class RebootVotePlugin extends JavaPlugin {
             return;
         }
 
-        // No active session: create a tiny “ephemeral” session to reuse messaging + reboot behavior.
-        RebootSession ephemeral = new RebootSession(this, messages, pools, 1, cooldown, statusUpdateInterval, holdReminderInterval);
+        RebootSession ephemeral = new RebootSession(
+                this,
+                messages,
+                pools,
+                1,
+                cooldown,
+                statusUpdateInterval,
+                holdReminderInterval
+        );
         ephemeral.forceReboot(sender);
         sender.sendMessage("RebootVote: force reboot initiated (no session).");
     }
 
     public void commandReload(CommandSender sender) {
-        // Reload config + palette + keywords + pools. Does not alter a running session.
         reloadAllConfigState();
         sender.sendMessage("RebootVote: reloaded config.");
     }
 
-    // Listener entry points (already scheduled onto main thread by listeners)
+    public void commandStatsReset(CommandSender sender) {
+        if (!isSenderAllowed(sender)) {
+            sender.sendMessage("RebootVote: you do not have permission.");
+            return;
+        }
+
+        if (rebootStats == null) rebootStats = new RebootStatsStore(this);
+        rebootStats.resetTimingStats();
+
+        rebootCommittedThisCycle = false;
+        sender.sendMessage("RebootVote: reboot timing stats reset.");
+    }
+
+    /* -------------------------------------------------------------------------
+     * Listener entry points
+     * ---------------------------------------------------------------------- */
+
     public void handleVote(Player player, Vote vote) {
         if (session == null || !session.isActive()) return;
         session.onVote(player, vote);
@@ -142,6 +209,10 @@ public final class RebootVotePlugin extends JavaPlugin {
         session.onPlayerQuit(player);
     }
 
+    /* -------------------------------------------------------------------------
+     * Config / reboot execution
+     * ---------------------------------------------------------------------- */
+
     private void reloadAllConfigState() {
         reloadConfig();
 
@@ -151,23 +222,15 @@ public final class RebootVotePlugin extends JavaPlugin {
         pools = new TemplatePools(getConfig());
         voteKeywords = new VoteKeywords(getConfig());
 
-        // Validate templates (logs warnings, never hard-fails).
         messages.validateTemplates(pools);
     }
 
     /**
-     * Called by RebootSession when the countdown completes.
-     * Preserves existing reboot behavior:
-     * - reboot.mode = SHUTDOWN -> Bukkit.shutdown()
-     * - reboot.mode = COMMAND  -> dispatch reboot.command as console
+     * Executes the configured reboot action.
      */
     public void executeRebootAction() {
-        // Record the time we initiated the reboot so we can compute duration on next startup.
-        if (rebootStats != null) {
-            rebootStats.markRebootInitiated();
-        }
-
         String mode = getConfig().getString("reboot.mode", "SHUTDOWN");
+
         if ("COMMAND".equalsIgnoreCase(mode)) {
             String cmd = getConfig().getString("reboot.command", "restart");
             if (cmd != null && !cmd.isBlank()) {
@@ -175,15 +238,18 @@ public final class RebootVotePlugin extends JavaPlugin {
                 return;
             }
         }
+
         Bukkit.shutdown();
     }
 
-    /** Placeholder value for <last_reboot_seconds>. Empty string means "unknown". */
+    /* -------------------------------------------------------------------------
+     * Placeholder helpers
+     * ---------------------------------------------------------------------- */
+
     public String getLastRebootSecondsDisplay() {
         return rebootStats == null ? "" : rebootStats.lastSecondsDisplay();
     }
 
-    /** Placeholder value for <avg_reboot_seconds>. Empty string means "unknown". */
     public String getAvgRebootSecondsDisplay() {
         return rebootStats == null ? "" : rebootStats.avgSecondsDisplay();
     }
