@@ -6,16 +6,17 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Locale;
 
 /**
- * Persists simple reboot timing stats across restarts.
+ * Persists reboot timing stats across restarts.
  *
- * How it works:
- * - Right before we trigger a reboot, we write a {@code pending_reboot_started_ms} timestamp.
- * - On next plugin enable, if that timestamp exists, we compute the elapsed time to "now"
- *   and treat that as the last reboot duration.
+ * Timing model (current project scope):
+ * - The reboot "commit" happens when the countdown reaches 0 OR all players vote OK.
+ * - The reboot-duration stopwatch STARTS at shutdown start (plugin onDisable),
+ *   and ends at next boot when the plugin enables again.
  *
- * This is an approximation of "time until server is back" (process stop + process start + plugin enable).
+ * This approximates the real downtime a player experiences.
  */
 public final class RebootStatsStore {
 
@@ -54,13 +55,13 @@ public final class RebootStatsStore {
             // Sanity check. If it looks unreasonable, treat it as stale.
             if (elapsed > 0 && elapsed <= MAX_REASONABLE_REBOOT_MS) {
                 this.lastDurationMs = elapsed;
-                // Running average
+
                 double total = (this.avgDurationMs < 0 ? 0.0 : this.avgDurationMs * this.samples);
                 this.samples = Math.max(0L, this.samples) + 1L;
                 this.avgDurationMs = (total + elapsed) / this.samples;
             }
 
-            // Always clear the pending marker so it doesn't poison future boots.
+            // Always clear pending marker so it can't poison future boots.
             yml.set("pending_reboot_started_ms", null);
             yml.set("last_reboot_duration_ms", this.lastDurationMs);
             yml.set("avg_reboot_duration_ms", this.avgDurationMs);
@@ -70,15 +71,34 @@ public final class RebootStatsStore {
     }
 
     /**
-     * Call immediately before triggering a reboot/restart.
+     * Start (persist) the reboot-duration stopwatch at a specific timestamp.
+     * Intended call site: plugin onDisable(), right as shutdown begins.
      */
-    public void markRebootInitiated() {
+    public void markRebootInitiatedAt(long startedAtMs) {
         YamlConfiguration yml = YamlConfiguration.loadConfiguration(file);
-        yml.set("pending_reboot_started_ms", System.currentTimeMillis());
-        // Keep previous stats; just write the marker.
+        yml.set("pending_reboot_started_ms", startedAtMs);
+
+        // Preserve existing stats.
         if (lastDurationMs >= 0) yml.set("last_reboot_duration_ms", lastDurationMs);
         if (avgDurationMs >= 0) yml.set("avg_reboot_duration_ms", avgDurationMs);
         yml.set("samples", samples);
+
+        save(yml);
+    }
+
+    /**
+     * Clears reboot timing history and any pending measurement.
+     */
+    public void resetTimingStats() {
+        this.lastDurationMs = -1L;
+        this.avgDurationMs = -1.0;
+        this.samples = 0L;
+
+        YamlConfiguration yml = new YamlConfiguration();
+        yml.set("pending_reboot_started_ms", null);
+        yml.set("last_reboot_duration_ms", null);
+        yml.set("avg_reboot_duration_ms", null);
+        yml.set("samples", 0L);
         save(yml);
     }
 
@@ -89,11 +109,11 @@ public final class RebootStatsStore {
 
     public String avgSecondsDisplay() {
         if (avgDurationMs <= 0) return "unknown";
-        return String.format(java.util.Locale.ROOT, "%.1f", avgDurationMs / 1000.0);
+        return String.format(Locale.ROOT, "%.1f", avgDurationMs / 1000.0);
     }
 
     private String formatSeconds(long ms) {
-        return String.format(java.util.Locale.ROOT, "%.1f", ms / 1000.0);
+        return String.format(Locale.ROOT, "%.1f", ms / 1000.0);
     }
 
     private void save(YamlConfiguration yml) {

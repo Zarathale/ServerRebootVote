@@ -1,4 +1,3 @@
-```java
 // src/main/java/cc/scaenacraft/rebootvote/RebootSession.java
 package cc.scaenacraft.rebootvote;
 
@@ -470,4 +469,3 @@ public final class RebootSession {
         }
     }
 }
-```

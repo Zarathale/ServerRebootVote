@@ -18,9 +18,8 @@ public final class RebootVoteCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Console allowed.
         if (args.length == 0) {
-            sender.sendMessage("Usage: /rebootvote <start|cancel|status|force|reload> [seconds]");
+            sender.sendMessage("Usage: /rebootvote <start|cancel|status|force|reload|stats reset> [seconds]");
             return true;
         }
 
@@ -28,7 +27,7 @@ public final class RebootVoteCommand implements CommandExecutor {
 
         switch (sub) {
             case "start" -> {
-                int seconds = plugin.getConfig().getInt("default-reboot-time", 60);
+                int seconds = plugin.getConfig().getInt("default-reboot-time", 45);
                 if (args.length >= 2) {
                     try {
                         seconds = Integer.parseInt(args[1]);
@@ -55,8 +54,16 @@ public final class RebootVoteCommand implements CommandExecutor {
                 plugin.commandReload(sender);
                 return true;
             }
+            case "stats" -> {
+                if (args.length >= 2 && args[1].equalsIgnoreCase("reset")) {
+                    plugin.commandStatsReset(sender);
+                    return true;
+                }
+                sender.sendMessage("Usage: /rebootvote stats reset");
+                return true;
+            }
             default -> {
-                sender.sendMessage("Unknown subcommand. Use: start, cancel, status, force, reload");
+                sender.sendMessage("Unknown subcommand. Use: start, cancel, status, force, reload, stats reset");
                 return true;
             }
         }

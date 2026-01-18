@@ -1,7 +1,7 @@
 # src/main/resources/plugin.yml
 name: RebootVote
 main: cc.scaenacraft.rebootvote.RebootVotePlugin
-version: 1.1.0
+version: 1.1.1
 api-version: "1.21"
 author: ScaenaCraft
 description: Polite reboot voting (OK/WAIT) with jazzy MiniMessage broadcasts.
@@ -9,7 +9,7 @@ description: Polite reboot voting (OK/WAIT) with jazzy MiniMessage broadcasts.
 commands:
   rebootvote:
     description: Controls the polite reboot vote flow.
-    usage: /rebootvote <start|cancel|status|force|reload> [seconds]
+    usage: /rebootvote <start|cancel|status|force|reload|stats reset> [seconds]
     permission: rebootvote.admin
 
 permissions:
